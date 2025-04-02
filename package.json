@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
-
+    "build": "chmod +x build.sh && ./build.sh",
+    "dev": "nodemon index.js",
+    "start": "node index.js"
   },
   "author": "",
   "license": "ISC",

@@ -1,52 +1,44 @@
-require("dotenv").config();
 const express = require("express");
-const oqs = require("liboqs-node");
+const bodyParser = require("body-parser");
+const { Signature } = require("liboqs-node");
 
 const app = express();
-const PORT = process.env.PORT || 10000;
-
-app.use(express.json());
+app.use(bodyParser.json());
 
 // Generate a Dilithium3 key pair
-const keypair = oqs.Signature.generateKeypair("Dilithium3");
-const publicKey = keypair.publicKey;
-const privateKey = keypair.secretKey;
+const signer = new Signature("Dilithium3");
+const keypair = signer.generateKeypair();
 
-// Route to sign a vote
+console.log("🔑 Public Key:", keypair.publicKey.toString("hex"));
+
 app.post("/sign_vote", (req, res) => {
     const { vote } = req.body;
+    if (!vote) return res.status(400).json({ error: "No vote provided" });
 
-    if (!vote) {
-        return res.status(400).json({ error: "No vote provided" });
-    }
+    // Sign the vote
+    const signature = signer.sign(Buffer.from(vote));
 
-    const signature = oqs.Signature.sign("Dilithium3", vote, privateKey);
     res.json({
         vote,
-        signature: Buffer.from(signature).toString("hex"),
-        public_key: Buffer.from(publicKey).toString("hex"),
+        signature: signature.toString("hex"),
+        public_key: keypair.publicKey.toString("hex")
     });
 });
 
-// Route to verify a vote signature
 app.post("/verify_vote", (req, res) => {
     const { vote, signature, public_key } = req.body;
-
     if (!vote || !signature || !public_key) {
         return res.status(400).json({ error: "Missing vote, signature, or public key" });
     }
 
-    const isValid = oqs.Signature.verify(
-        "Dilithium3",
-        vote,
-        Buffer.from(signature, "hex"),
-        Buffer.from(public_key, "hex")
-    );
-
-    res.json({ vote, signature_valid: isValid });
+    try {
+        // Verify the vote
+        const isValid = signer.verify(Buffer.from(vote), Buffer.from(signature, "hex"), Buffer.from(public_key, "hex"));
+        res.json({ vote, signature_valid: isValid });
+    } catch (error) {
+        res.status(500).json({ error: "Verification failed", details: error.message });
+    }
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));

@@ -1,0 +1,8 @@
+services:
+  - name: pqc-voting-app
+    type: web
+    buildCommand: "./build.sh"
+    startCommand: "npm run dev"
+    envVars:
+      - key: PORT
+        value: "10000"
